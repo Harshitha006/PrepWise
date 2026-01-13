@@ -11,8 +11,19 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+const getFirebaseApp = () => {
+  if (getApps().length > 0) return getApp();
+
+  if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
+    console.error("FIREBASE CLIENT ERROR: Missing NEXT_PUBLIC_FIREBASE_API_KEY in .env.local");
+    return null;
+  }
+
+  return initializeApp(firebaseConfig);
+};
+
+const app = getFirebaseApp();
+const auth = app ? getAuth(app) : (null as any);
+const db = app ? getFirestore(app) : (null as any);
 
 export { app, auth, db };

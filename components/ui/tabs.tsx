@@ -1,66 +1,100 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import * as TabsPrimitive from "@radix-ui/react-tabs"
+import * as React from "react";
+import { cn } from "@/lib/utils";
 
-import { cn } from "@/lib/utils"
-
-function Tabs({
-  className,
-  ...props
-}: React.ComponentProps<typeof TabsPrimitive.Root>) {
-  return (
-    <TabsPrimitive.Root
-      data-slot="tabs"
-      className={cn("flex flex-col gap-2", className)}
-      {...props}
-    />
-  )
+interface TabsProps {
+  value: string;
+  onValueChange: (value: string) => void;
+  children: React.ReactNode;
+  className?: string;
 }
 
-function TabsList({
-  className,
-  ...props
-}: React.ComponentProps<typeof TabsPrimitive.List>) {
+const Tabs = ({ value, onValueChange, children, className }: TabsProps) => {
   return (
-    <TabsPrimitive.List
-      data-slot="tabs-list"
+    <div className={className}>
+      {React.Children.map(children, (child) => {
+        if (React.isValidElement(child)) {
+          return React.cloneElement(child, {
+            activeValue: value,
+            onValueChange
+          } as any);
+        }
+        return child;
+      })}
+    </div>
+  );
+};
+
+interface TabsListProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+const TabsList = ({ children, className }: TabsListProps) => {
+  return (
+    <div className={cn(
+      "inline-flex h-10 items-center justify-center rounded-md bg-zinc-800 p-1",
+      className
+    )}>
+      {children}
+    </div>
+  );
+};
+
+interface TabsTriggerProps {
+  value: string;
+  children: React.ReactNode;
+  className?: string;
+  activeValue?: string;
+  onValueChange?: (value: string) => void;
+}
+
+const TabsTrigger = ({
+  value,
+  children,
+  className,
+  activeValue,
+  onValueChange
+}: TabsTriggerProps) => {
+  const isActive = activeValue === value;
+
+  return (
+    <button
+      onClick={() => onValueChange?.(value)}
       className={cn(
-        "bg-muted text-muted-foreground inline-flex h-9 w-fit items-center justify-center rounded-lg p-[3px]",
+        "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-all",
+        isActive
+          ? "bg-zinc-900 text-white shadow-sm"
+          : "text-zinc-400 hover:text-white",
         className
       )}
-      {...props}
-    />
-  )
+    >
+      {children}
+    </button>
+  );
+};
+
+interface TabsContentProps {
+  value: string;
+  children: React.ReactNode;
+  className?: string;
+  activeValue?: string;
 }
 
-function TabsTrigger({
+const TabsContent = ({
+  value,
+  children,
   className,
-  ...props
-}: React.ComponentProps<typeof TabsPrimitive.Trigger>) {
-  return (
-    <TabsPrimitive.Trigger
-      data-slot="tabs-trigger"
-      className={cn(
-        "data-[state=active]:bg-background dark:data-[state=active]:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:outline-ring dark:data-[state=active]:border-input dark:data-[state=active]:bg-input/30 text-foreground dark:text-muted-foreground inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-2 py-1 text-sm font-medium whitespace-nowrap transition-[color,box-shadow] focus-visible:ring-[3px] focus-visible:outline-1 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:shadow-sm [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        className
-      )}
-      {...props}
-    />
-  )
-}
+  activeValue
+}: TabsContentProps) => {
+  if (activeValue !== value) return null;
 
-function TabsContent({
-  className,
-  ...props
-}: React.ComponentProps<typeof TabsPrimitive.Content>) {
   return (
-    <TabsPrimitive.Content
-      data-slot="tabs-content"
-      className={cn("flex-1 outline-none", className)}
-      {...props}
-    />
-  )
-}
+    <div className={cn("mt-2", className)}>
+      {children}
+    </div>
+  );
+};
 
-export { Tabs, TabsList, TabsTrigger, TabsContent }
+export { Tabs, TabsList, TabsTrigger, TabsContent };

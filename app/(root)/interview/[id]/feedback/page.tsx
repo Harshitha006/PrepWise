@@ -26,13 +26,7 @@ export default async function FeedbackPage({ params }: { params: { id: string } 
         );
     }
 
-    const sections = [
-        { label: "Communication Skills", ...feedback.categoryScores.communicationSkills },
-        { label: "Technical Knowledge", ...feedback.categoryScores.technicalKnowledge },
-        { label: "Problem Solving", ...feedback.categoryScores.problemSolving },
-        { label: "Cultural Fit", ...feedback.categoryScores.culturalFit },
-        { label: "Confidence & Clarity", ...feedback.categoryScores.confidenceAndClarity },
-    ];
+    const sections = feedback.categoryScores || [];
 
     return (
         <div className="max-w-5xl mx-auto space-y-10 pb-20">
@@ -79,11 +73,11 @@ export default async function FeedbackPage({ params }: { params: { id: string } 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-6">
                     <h2 className="text-xl font-bold text-zinc-200 px-1">Performance Details</h2>
-                    {sections.map((section, idx) => (
+                    {sections.map((section: { name: string, score: number, comment: string }, idx: number) => (
                         <Card key={idx} className="bg-zinc-900/50 border-white/5">
                             <CardContent className="p-5 space-y-3">
                                 <div className="flex items-center justify-between">
-                                    <span className="font-medium text-zinc-300">{section.label}</span>
+                                    <span className="font-medium text-zinc-300">{section.name}</span>
                                     <Badge variant="secondary" className="bg-purple-500/10 text-purple-400 border-none">
                                         {section.score}/100
                                     </Badge>

@@ -6,6 +6,11 @@ import { redirect } from "next/navigation";
 
 export async function setSessionCookie(idToken: string) {
     const expiresIn = 60 * 60 * 24 * 7 * 1000; // 7 days
+    if (!adminAuth) {
+        console.error("adminAuth is not initialized. Check your Firebase environment variables.");
+        return;
+    }
+
     const sessionCookie = await adminAuth.createSessionCookie(idToken, {
         expiresIn,
     });
@@ -14,7 +19,7 @@ export async function setSessionCookie(idToken: string) {
     cookieStore.set("session", sessionCookie, {
         maxAge: expiresIn,
         httpOnly: true,
-        secure: true,
+        secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
         path: "/",
     });
@@ -27,13 +32,28 @@ export async function getCurrentUser() {
     if (!session) return null;
 
     try {
+        if (!adminAuth || !adminDb) {
+            console.error("Firebase Admin not initialized in getCurrentUser");
+            return null;
+        }
+
         const decodedToken = await adminAuth.verifySessionCookie(session, true);
         const userDoc = await adminDb.collection("users").doc(decodedToken.uid).get();
 
-        if (!userDoc.exists) return null;
+        if (!userDoc.exists) {
+            console.warn("User document not found for UID:", decodedToken.uid);
+            // Return basic info from the token so the app doesn't crash
+            return {
+                id: decodedToken.uid,
+                name: decodedToken.name || decodedToken.email?.split('@')[0] || "User",
+                email: decodedToken.email || "",
+                isProfileIncomplete: true
+            } as any;
+        }
 
         return { id: decodedToken.uid, ...userDoc.data() } as any;
     } catch (error) {
+        console.error("Error in getCurrentUser:", error);
         return null;
     }
 }
@@ -51,6 +71,7 @@ export async function signOut() {
 
 export async function signUp(userData: { name: string; email: string; uid: string }) {
     try {
+        if (!adminDb) throw new Error("Database not initialized");
         await adminDb.collection("users").doc(userData.uid).set({
             name: userData.name,
             email: userData.email,

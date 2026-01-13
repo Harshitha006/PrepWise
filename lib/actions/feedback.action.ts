@@ -1,19 +1,21 @@
 "use server";
 
-import { google } from "@ai-sdk/google";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { adminDb } from "@/firebase/admin";
 
+const google = createGoogleGenerativeAI({
+    apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+});
+
 const feedbackSchema = z.object({
     totalScore: z.number().min(0).max(100),
-    categoryScores: z.object({
-        communicationSkills: z.object({ score: z.number(), comment: z.string() }),
-        technicalKnowledge: z.object({ score: z.number(), comment: z.string() }),
-        problemSolving: z.object({ score: z.number(), comment: z.string() }),
-        culturalFit: z.object({ score: z.number(), comment: z.string() }),
-        confidenceAndClarity: z.object({ score: z.number(), comment: z.string() }),
-    }),
+    categoryScores: z.array(z.object({
+        name: z.string(),
+        score: z.number().min(0).max(100),
+        comment: z.string()
+    })),
     strengths: z.array(z.string()),
     areasForImprovement: z.array(z.string()),
     finalAssessment: z.string(),
@@ -22,7 +24,7 @@ const feedbackSchema = z.object({
 export async function createFeedback(interviewId: string, userId: string, transcript: string) {
     try {
         const { object } = await generateObject({
-            model: google("gemini-1.5-flash"),
+            model: google("gemini-1.5-flash-latest"),
             schema: feedbackSchema,
             prompt: `Analyze this interview transcript and provide constructive feedback. 
       Transcript: ${transcript}
@@ -36,6 +38,8 @@ export async function createFeedback(interviewId: string, userId: string, transc
             ...object,
             createdAt: new Date().toISOString(),
         };
+
+        if (!adminDb) throw new Error("Database not initialized");
 
         await adminDb.collection("feedback").add(feedbackData);
 

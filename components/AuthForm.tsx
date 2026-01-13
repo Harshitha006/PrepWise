@@ -24,10 +24,14 @@ import Link from "next/link";
 import { Loader2 } from "lucide-react";
 
 const authSchema = z.object({
-    name: z.string().min(3, "Name must be at least 3 characters").optional(),
+    name: z.string().optional(),
     email: z.string().email("Invalid email address"),
     password: z.string().min(3, "Password must be at least 3 characters"),
-});
+}).refine((data) => {
+    // If it's a hypothetical sign-up check, we'd check name here, 
+    // but we'll handle specific validation in the component logic or refine based on a 'type' if needed.
+    return true;
+}, {});
 
 interface AuthFormProps {
     type: "sign-in" | "sign-up";
@@ -47,6 +51,10 @@ export default function AuthForm({ type }: AuthFormProps) {
     });
 
     async function onSubmit(values: z.infer<typeof authSchema>) {
+        if (!auth) {
+            toast.error("Firebase authentication is not initialized. Check your environment variables.");
+            return;
+        }
         setIsLoading(true);
         try {
             if (type === "sign-up") {

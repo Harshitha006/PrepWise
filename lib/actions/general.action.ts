@@ -4,6 +4,7 @@ import { adminDb } from "@/firebase/admin";
 
 export async function getInterviewsByUserId(userId: string) {
     try {
+        if (!adminDb) return [];
         const snapshot = await adminDb
             .collection("interviews")
             .where("userId", "==", userId)
@@ -22,6 +23,7 @@ export async function getInterviewsByUserId(userId: string) {
 
 export async function getLatestInterviews({ userId, limit = 20 }: { userId: string; limit?: number }) {
     try {
+        if (!adminDb) return [];
         // Note: This query requires an index: finalized (asc) + userId (not equal) + createdAt (desc)
         // For simplicity, we'll fetch all finalized and filter in memory if the index isn't ready
         // But ideally we use the query.
@@ -45,6 +47,7 @@ export async function getLatestInterviews({ userId, limit = 20 }: { userId: stri
 
 export async function getInterviewById(id: string) {
     try {
+        if (!adminDb) return null;
         const doc = await adminDb.collection("interviews").doc(id).get();
         if (!doc.exists) return null;
         return { id: doc.id, ...doc.data() } as any;
@@ -55,6 +58,7 @@ export async function getInterviewById(id: string) {
 
 export async function getFeedbackByInterviewId(interviewId: string) {
     try {
+        if (!adminDb) return null;
         const snapshot = await adminDb
             .collection("feedback")
             .where("interviewId", "==", interviewId)

@@ -30,10 +30,10 @@ export default function InterviewRoomPage() {
         init();
     }, [id]);
 
-    const handleComplete = async (transcript: string) => {
-        if (!transcript) return;
+    const handleComplete = async (data: { transcript: string }) => {
+        if (!data.transcript) return;
         try {
-            const result = await createFeedback(id as string, user.id, transcript);
+            const result = await createFeedback(id as string, user.id, data.transcript);
             if (result.success) {
                 router.push(`/interview/${id}/feedback`);
             }
@@ -71,14 +71,14 @@ export default function InterviewRoomPage() {
                     <span>•</span>
                     <span className="text-sm uppercase tracking-widest">{interview.level}</span>
                     <span>•</span>
-                    <DisplayTechIcons techStack={interview.techStack} />
+                    <DisplayTechIcons techStack={interview.techstack || interview.techStack} />
                 </div>
             </div>
 
             <Agent
                 username={user?.name || "Candidate"}
                 userId={user?.id}
-                type="interview"
+                type="mock-interview"
                 interviewId={interview.id}
                 questions={interview.questions}
                 onComplete={handleComplete}
