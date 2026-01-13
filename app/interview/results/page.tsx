@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Brain, Loader2 } from "lucide-react";
 
-export default function ResultsPage() {
+import { Suspense } from "react";
+
+function ResultsContent() {
     const [results, setResults] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const searchParams = useSearchParams();
@@ -67,65 +69,78 @@ export default function ResultsPage() {
 
     if (loading) {
         return (
-            <PageLayout>
-                <div className="flex items-center justify-center min-h-[500px]">
-                    <div className="text-center">
-                        <Loader2 className="h-12 w-12 animate-spin text-blue-500 mx-auto" />
-                        <p className="mt-4 text-zinc-400">Loading your results...</p>
-                    </div>
+            <div className="flex items-center justify-center min-h-[500px]">
+                <div className="text-center">
+                    <Loader2 className="h-12 w-12 animate-spin text-blue-500 mx-auto" />
+                    <p className="mt-4 text-zinc-400">Loading your results...</p>
                 </div>
-            </PageLayout>
+            </div>
         );
     }
 
     return (
-        <PageLayout>
-            <div className="max-w-7xl mx-auto p-4 md:p-8">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <Button
-                        onClick={() => router.push("/")}
-                        variant="ghost"
-                        className="text-zinc-400 hover:text-white"
-                    >
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Home
-                    </Button>
+        <div className="max-w-7xl mx-auto p-4 md:p-8">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-8">
+                <Button
+                    onClick={() => router.push("/")}
+                    variant="ghost"
+                    className="text-zinc-400 hover:text-white"
+                >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to Home
+                </Button>
 
-                    <div className="flex items-center gap-2">
-                        <Brain className="h-5 w-5 text-purple-400" />
-                        <span className="text-sm font-medium text-purple-400">Interview Results</span>
+                <div className="flex items-center gap-2">
+                    <Brain className="h-5 w-5 text-purple-400" />
+                    <span className="text-sm font-medium text-purple-400">Interview Results</span>
+                </div>
+            </div>
+
+            {results ? (
+                <InterviewResults
+                    results={results}
+                    onRetry={() => router.push("/interview/practice")}
+                    onHome={() => router.push("/")}
+                />
+            ) : (
+                <Card className="border-zinc-800 bg-zinc-900/50">
+                    <CardContent className="p-12 text-center">
+                        <div className="mx-auto w-20 h-20 rounded-full bg-zinc-800 flex items-center justify-center mb-4">
+                            <Brain className="h-10 w-10 text-zinc-400" />
+                        </div>
+                        <h3 className="text-xl font-semibold text-white mb-2">
+                            Results Not Found
+                        </h3>
+                        <p className="text-zinc-400 mb-6">
+                            Could not find the interview results you're looking for
+                        </p>
+                        <Button
+                            onClick={() => router.push("/interview/practice")}
+                            className="bg-gradient-to-r from-blue-600 to-purple-600"
+                        >
+                            Start New Interview
+                        </Button>
+                    </CardContent>
+                </Card>
+            )}
+        </div>
+    );
+}
+
+export default function ResultsPage() {
+    return (
+        <PageLayout>
+            <Suspense fallback={
+                <div className="flex items-center justify-center min-h-[500px]">
+                    <div className="text-center">
+                        <Loader2 className="h-12 w-12 animate-spin text-blue-500 mx-auto" />
+                        <p className="mt-4 text-zinc-400">Loading...</p>
                     </div>
                 </div>
-
-                {results ? (
-                    <InterviewResults
-                        results={results}
-                        onRetry={() => router.push("/interview/practice")}
-                        onHome={() => router.push("/")}
-                    />
-                ) : (
-                    <Card className="border-zinc-800 bg-zinc-900/50">
-                        <CardContent className="p-12 text-center">
-                            <div className="mx-auto w-20 h-20 rounded-full bg-zinc-800 flex items-center justify-center mb-4">
-                                <Brain className="h-10 w-10 text-zinc-400" />
-                            </div>
-                            <h3 className="text-xl font-semibold text-white mb-2">
-                                Results Not Found
-                            </h3>
-                            <p className="text-zinc-400 mb-6">
-                                Could not find the interview results you're looking for
-                            </p>
-                            <Button
-                                onClick={() => router.push("/interview/practice")}
-                                className="bg-gradient-to-r from-blue-600 to-purple-600"
-                            >
-                                Start New Interview
-                            </Button>
-                        </CardContent>
-                    </Card>
-                )}
-            </div>
+            }>
+                <ResultsContent />
+            </Suspense>
         </PageLayout>
     );
 }
