@@ -2,8 +2,6 @@
 
 PrepWise is a cutting-edge, 100% free interview preparation platform designed to help job seekers practice technical and behavioral interviews. It leverages **Google Gemini** for intelligent question generation and feedback, and the native **Web Speech API** for real-time voice interaction—eliminating the need for expensive external speech services.
 
-![PrepWise Dashboard](https://github.com/user-attachments/assets/placeholder.png)
-
 ## 🚀 Features
 
 *   **🎙️ Human-like Mock Interviews**: Conduct realistic voice interviews with an AI that speaks and listens in real-time.
