@@ -83,7 +83,7 @@ export default function SettingsPage() {
             description: "You have been successfully logged out.",
             duration: 3000
         });
-        router.push("/");
+        router.push("/sign-in");
     };
 
     return (

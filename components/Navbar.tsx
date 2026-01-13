@@ -28,8 +28,8 @@ export default function Navbar() {
         localStorage.removeItem("interviewHistory");
         localStorage.removeItem("interviews");
 
-        // Redirect to home
-        router.push("/");
+        // Redirect to sign-in
+        router.push("/sign-in");
         router.refresh();
     };
 

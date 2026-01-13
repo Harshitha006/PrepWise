@@ -1,16 +1,20 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-interface SliderProps extends React.InputHTMLAttributes<HTMLInputElement> {
+interface SliderProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'defaultValue'> {
     value: number[];
     onValueChange: (value: number[]) => void;
+    defaultValue?: number[];
 }
 
 const Slider = React.forwardRef<HTMLInputElement, SliderProps>(
-    ({ className, value, onValueChange, ...props }, ref) => {
+    ({ className, value, onValueChange, defaultValue, ...props }, ref) => {
         const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             onValueChange([parseFloat(e.target.value)]);
         };
+
+        const max = (props.max as number) || 100;
+        const percentage = (value[0] / max) * 100;
 
         return (
             <input
@@ -23,7 +27,7 @@ const Slider = React.forwardRef<HTMLInputElement, SliderProps>(
                     className
                 )}
                 style={{
-                    background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(value[0] / (props.max || 100)) * 100}%, #374151 ${(value[0] / (props.max || 100)) * 100}%, #374151 100%)`
+                    background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${percentage}%, #374151 ${percentage}%, #374151 100%)`
                 }}
                 {...props}
             />
