@@ -10,7 +10,7 @@ PrepWise is a comprehensive platform built with Next.js 14, Designed to help use
 - **Protected Routes**: Automatic redirection for unauthenticated users in the root layout.
 
 ### 2. AI-Powered Generation
-- **Voice Setup**: Users talk to a Vapi AI agent to define their target role, tech stack, and experience level.
+- **Voice Setup**: Users talk to an AI agent to define their target role, tech stack, and experience level.
 - **Gemini Engine**: The platform uses Google's Gemini 1.5 Flash to generate tailored interview questions based on the voice input.
 - **Automation**: Questions are automatically saved to Firestore for the user's practice session.
 
@@ -36,12 +36,12 @@ PrepWise is a comprehensive platform built with Next.js 14, Designed to help use
 ## Project Structure
 - `/app/(auth)`: Sign-in and Sign-up logic with route protection.
 - `/app/(root)`: Dashboard, interview generation, mockup room, and feedback pages.
-- `/app/api/vapi/generate`: Backend endpoint for AI question generation.
+- `/app/api/generate-interview`: Backend endpoint for AI question generation.
 - `/components`: Reusable UI components including the complex `Agent` voice component.
 - `/lib/actions`: Server-side logic for database operations and AI processing.
 
 ## Getting Started
-1. Fill in the `.env.local` with your Firebase, Vapi, and Google AI keys.
+1. Fill in the `.env.local` with your Firebase and Google AI keys.
 2. Run `npm install`.
 3. Start the dev server with `npm run dev`.
 4. Register a new account and start practicing!
