@@ -35,7 +35,7 @@ PrepWise is a comprehensive platform built with Next.js 14, Designed to help use
 
 ## Project Structure
 - `/app/(auth)`: Sign-in and Sign-up logic with route protection.
-- `/app/(root)`: Dashboard, interview generation, mockup room, and feedback pages.
+- `/app/(root)`: Dashboard, interview generation, mockup room, and fee8dback pages.
 - `/app/api/generate-interview`: Backend endpoint for AI question generation.
 - `/components`: Reusable UI components including the complex `Agent` voice component.
 - `/lib/actions`: Server-side logic for database operations and AI processing.

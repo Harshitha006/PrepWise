@@ -7,8 +7,7 @@ import { redirect } from "next/navigation";
 export async function setSessionCookie(idToken: string) {
     const expiresIn = 60 * 60 * 24 * 7 * 1000; // 7 days
     if (!adminAuth) {
-        console.error("adminAuth is not initialized. Check your Firebase environment variables.");
-        return;
+        throw new Error("Firebase Admin Auth not initialized. Check server environment variables.");
     }
 
     const sessionCookie = await adminAuth.createSessionCookie(idToken, {
@@ -16,7 +15,7 @@ export async function setSessionCookie(idToken: string) {
     });
 
     const cookieStore = await cookies();
-    cookieStore.set("session", sessionCookie, {
+    cookieStore.set("__session", sessionCookie, {
         maxAge: expiresIn,
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
@@ -27,7 +26,7 @@ export async function setSessionCookie(idToken: string) {
 
 export async function getCurrentUser() {
     const cookieStore = await cookies();
-    const session = cookieStore.get("session")?.value;
+    const session = cookieStore.get("__session")?.value;
 
     if (!session) return null;
 
@@ -64,18 +63,24 @@ export async function isAuthenticated() {
 }
 
 export async function signOut() {
-    const cookieStore = await cookies();
-    cookieStore.delete("session");
+    await deleteSessionCookie();
     redirect("/sign-in");
+}
+
+export async function deleteSessionCookie() {
+    const cookieStore = await cookies();
+    cookieStore.delete("__session");
 }
 
 export async function signUp(userData: { name: string; email: string; uid: string }) {
     try {
-        if (!adminDb) throw new Error("Database not initialized");
+        if (!adminDb) throw new Error("Firebase Admin Firestore not initialized.");
         await adminDb.collection("users").doc(userData.uid).set({
             name: userData.name,
             email: userData.email,
             createdAt: new Date().toISOString(),
+            resumeData: null,
+            interviewHistory: []
         });
         return { success: true };
     } catch (error: any) {

@@ -11,25 +11,34 @@ import {
     History,
     Upload,
     RefreshCw,
-    Trash2
+    Trash2,
+    LogOut
 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function DashboardPage() {
+    const { user, logout } = useAuth();
     const [userId, setUserId] = useState<string>("");
     const [resumeHistory, setResumeHistory] = useState<any[]>([]);
     const [activeTab, setActiveTab] = useState("upload");
     const router = useRouter();
 
     useEffect(() => {
-        // Get user ID
-        const localUserId = localStorage.getItem("userId") || `user_${Date.now()}`;
-        setUserId(localUserId);
-        localStorage.setItem("userId", localUserId);
-
-        // Load resume history from localStorage
+        if (user) {
+            setUserId(user.uid);
+        }
         loadResumeHistory();
-    }, []);
+    }, [user]);
+
+    const handleLogout = async () => {
+        try {
+            await logout();
+            router.push("/sign-in");
+        } catch (error) {
+            console.error("Logout failed:", error);
+        }
+    };
 
     const loadResumeHistory = () => {
         try {
@@ -90,14 +99,27 @@ export default function DashboardPage() {
     return (
         <PageLayout>
             <div className="container mx-auto px-4 py-8">
-                {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
-                        Resume Dashboard
-                    </h1>
-                    <p className="text-zinc-400">
-                        Upload and analyze your resume for personalized interview preparation
-                    </p>
+                {/* Header with User Profile & Logout */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                    <div>
+                        <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+                            Dashboard
+                        </h1>
+                        {user && (
+                            <p className="text-zinc-400">
+                                Welcome back, <span className="text-blue-400 font-medium">{user.displayName || user.email}</span>
+                            </p>
+                        )}
+                    </div>
+
+                    <Button
+                        variant="outline"
+                        className="border-zinc-700 hover:bg-red-500/10 hover:text-red-400 font-medium transition-colors"
+                        onClick={handleLogout}
+                    >
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Sign Out
+                    </Button>
                 </div>
 
                 {/* Tabs */}
@@ -150,7 +172,7 @@ export default function DashboardPage() {
                                     </CardHeader>
                                     <CardContent>
                                         <div className="space-y-4">
-                                            {resumeHistory.map((resume) => (
+                                            {resumeHistory.map((resume: any) => (
                                                 <Card key={resume.id} className="bg-zinc-900/50 border-zinc-800">
                                                     <CardContent className="p-6">
                                                         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">

@@ -1,3 +1,6 @@
+import { getCurrentUser } from "./actions/auth.action";
+
 export async function getUserId() {
-    return "user_" + Date.now();
+    const user = await getCurrentUser();
+    return user?.id || "anonymous";
 }

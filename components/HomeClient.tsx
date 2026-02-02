@@ -20,12 +20,14 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface HomeClientProps {
     userId: string;
 }
 
 export default function HomeClient({ userId }: HomeClientProps) {
+    const { user } = useAuth();
     const [userStats, setUserStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [hasResume, setHasResume] = useState(false);
@@ -110,7 +112,7 @@ export default function HomeClient({ userId }: HomeClientProps) {
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                     <div className="space-y-3">
                         <h1 className="text-3xl md:text-4xl font-bold text-white">
-                            Welcome to <span className="text-blue-400">PrepWise AI</span>
+                            Welcome, <span className="text-blue-400">{user?.displayName || user?.email?.split("@")[0] || "User"}</span>!
                         </h1>
                         <p className="text-zinc-300 max-w-2xl">
                             {hasResume
