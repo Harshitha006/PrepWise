@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { FreeResumeAnalyzer } from "@/services/free-resume-analyzer";
+import { EnhancedResumeAnalyzer } from "@/services/enhanced-resume-analyzer";
 
 // Note: Using standard Node.js runtime as pdf-parse/Tesseract require Node.js APIs not available in Edge
 export const dynamic = 'force-dynamic';
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const analyzer = new FreeResumeAnalyzer();
+        const analyzer = new EnhancedResumeAnalyzer();
 
         // Process resume
         const result = await analyzer.analyzeResume(file);
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
             }
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Free analysis error:", error);
 
         return NextResponse.json(

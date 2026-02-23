@@ -1,200 +1,141 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateText } from "ai";
+import { z } from "zod";
+
+const questionSchema = z.object({
+  questions: z.array(
+    z.object({
+      question: z.string(),
+      difficulty: z.enum(["EASY", "MEDIUM", "HARD"]),
+      category: z.string(),
+      expectedKeywords: z.array(z.string()),
+      timeLimit: z.number().optional(),
+      followUp: z.array(z.string()).optional(),
+    }),
+  ),
+});
+
+type Question = z.infer<typeof questionSchema>["questions"][number];
 
 export async function POST(req: NextRequest) {
-    console.log("=== GENERATE QUESTIONS API CALLED ===");
+  try {
+    const { role, skills, experience, difficulty } = await req.json();
 
-    try {
-        const body = await req.json();
-        const { role, skills, experience, jobRequirements } = body;
+    if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+      const google = createGoogleGenerativeAI({
+        apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+      });
 
-        console.log("Generating questions for:", role, skills?.length);
+      const prompt = `Generate 10 interview questions for a ${role || "Software Engineer"} position.
 
-        // Always return questions immediately - don't wait for AI
-        const questions = getQuestionsByRole(role, skills, experience);
+Candidate Details:
+- Skills: ${(skills || []).join(", ")}
+- Experience Level: ${experience || "Not specified"} years
+- Desired Difficulty: ${difficulty || "MEDIUM"}
 
-        return NextResponse.json({
-            success: true,
-            questions,
-            message: "Questions generated successfully"
-        });
+For each question provide:
+1. The question text
+2. Difficulty level (EASY/MEDIUM/HARD)
+3. Category (Technical/Behavioral/System Design/Problem Solving)
+4. Expected keywords in the answer
+5. Suggested time limit in minutes
+6. Possible follow-up questions
 
-        /* UNCOMMENT THIS IF YOU WANT TO USE AI (with correct model names)
-        if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
-          try {
-            const google = createGoogleGenerativeAI({
-              apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-            });
-    
-            // Use correct model names
-            const modelNames = [
-              "gemini-1.5-pro-latest",  // Most capable
-              "gemini-pro",             // Alternative
-              "gemini-1.0-pro-latest",  // Basic
-            ];
-    
-            for (const modelName of modelNames) {
-              try {
-                console.log(`Trying model: ${modelName}`);
-                
-                const response = await generateText({
-                  model: google(modelName as any),
-                  prompt: `Generate 10 interview questions for a ${role} position. 
-                  Skills: ${skills?.join(", ") || "General technical skills"}
-                  Experience: ${experience || "Not specified"}
-                  
-                  Return as a JSON array of strings.`,
-                  temperature: 0.7,
-                  maxTokens: 1000,
-                });
-    
-                console.log("AI response received");
-                
-                try {
-                  const parsedQuestions = JSON.parse(response.text);
-                  if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
-                    return NextResponse.json({
-                      success: true,
-                      questions: parsedQuestions,
-                      message: "AI-generated questions",
-                      modelUsed: modelName
-                    });
-                  }
-                } catch (parseError) {
-                  console.log("Failed to parse AI response");
-                }
-              } catch (modelError) {
-                console.log(`Model ${modelName} failed`);
-                continue;
-              }
-            }
-          } catch (aiError) {
-            console.log("AI failed completely:", aiError);
-          }
-        }
-    
-        // Fallback to rule-based questions
-        const questions = getQuestionsByRole(role, skills, experience);
-        
-        return NextResponse.json({
-          success: true,
-          questions,
-          message: "Questions generated using rule-based system"
-        });
-        */
+Make questions specific to the role and relevant to skills.
+Return valid JSON only as: {"questions": [...]}.`;
 
-    } catch (error: any) {
-        console.error("Questions generation error:", error);
+      const { text } = await generateText({
+        model: google("gemini-1.5-pro-latest"),
+        prompt,
+        temperature: 0.4,
+      });
 
-        // Always return questions
-        const questions = getFallbackQuestions();
+      const cleanedText = text.replace(/```json\n?|\n?```/g, "").trim();
+      const parsed = JSON.parse(cleanedText);
+      const validated = questionSchema.parse(parsed);
+      const breakdown = getDifficultyBreakdown(validated.questions);
 
-        return NextResponse.json({
-            success: true,
-            questions,
-            message: "Questions generated (fallback)"
-        });
-    }
-}
-
-function getQuestionsByRole(role: string = "Software Developer", skills: string[] = [], experience: string = ""): string[] {
-    const roleQuestions: Record<string, string[]> = {
-        "Software Engineer": [
-            "Tell me about your experience with object-oriented programming.",
-            "How do you approach debugging a complex issue?",
-            "What's your experience with version control systems?",
-            "Describe a challenging project you worked on.",
-            "How do you ensure code quality in your projects?",
-            "What's your experience with testing methodologies?",
-            "How do you stay updated with new technologies?",
-            "Describe your experience with databases.",
-            "How do you handle tight deadlines?",
-            "What are your career goals?"
-        ],
-        "Frontend Developer": [
-            "What's your experience with modern JavaScript frameworks?",
-            "How do you ensure responsive design?",
-            "Describe your CSS methodology.",
-            "How do you optimize web performance?",
-            "What's your experience with state management?",
-            "How do you handle cross-browser compatibility?",
-            "Describe your experience with build tools.",
-            "How do you approach accessibility?",
-            "What's your experience with testing frontend code?",
-            "How do you collaborate with designers?"
-        ],
-        "Backend Developer": [
-            "Describe your experience with server-side programming.",
-            "How do you design RESTful APIs?",
-            "What's your experience with databases?",
-            "How do you handle authentication and authorization?",
-            "Describe your experience with caching strategies.",
-            "How do you ensure application security?",
-            "What's your experience with message queues?",
-            "How do you monitor application performance?",
-            "Describe your experience with cloud platforms.",
-            "How do you handle data migration?"
-        ],
-        "Full Stack Developer": [
-            "How do you balance frontend and backend development?",
-            "Describe your experience with end-to-end development.",
-            "How do you ensure consistency across the stack?",
-            "What's your approach to API design?",
-            "How do you handle deployment and DevOps?",
-            "Describe your experience with database design.",
-            "How do you optimize full-stack performance?",
-            "What's your experience with microservices?",
-            "How do you handle security across layers?",
-            "Describe your project architecture decisions."
-        ]
-    };
-
-    // Determine role category
-    const lowerRole = role.toLowerCase();
-    let selectedRole = "Software Engineer";
-
-    if (lowerRole.includes("frontend") || lowerRole.includes("react") || lowerRole.includes("angular") || lowerRole.includes("vue")) {
-        selectedRole = "Frontend Developer";
-    } else if (lowerRole.includes("backend") || lowerRole.includes("node") || lowerRole.includes("api") || lowerRole.includes("server")) {
-        selectedRole = "Backend Developer";
-    } else if (lowerRole.includes("full stack") || lowerRole.includes("full-stack")) {
-        selectedRole = "Full Stack Developer";
+      return NextResponse.json({
+        success: true,
+        questions: validated.questions,
+        metadata: {
+          role,
+          totalQuestions: validated.questions.length,
+          difficultyBreakdown: breakdown,
+        },
+      });
     }
 
-    const questions = roleQuestions[selectedRole] || roleQuestions["Software Engineer"];
+    const fallbackQuestions = getFallbackQuestions(role, skills);
+    return NextResponse.json({ success: true, questions: fallbackQuestions, isFallback: true });
+  } catch (error) {
+    console.error("❌ Question generation failed:", error);
 
-    // Personalize questions based on skills
-    if (skills && skills.length > 0) {
-        const skillQuestions = skills.slice(0, 3).map(skill =>
-            `What's your experience with ${skill}?`
-        );
-        return [...skillQuestions, ...questions.slice(skillQuestions.length)];
-    }
-
-    return questions;
-}
-
-function getFallbackQuestions(): string[] {
-    return [
-        "Tell me about yourself and your technical background.",
-        "What programming languages are you most comfortable with?",
-        "Describe a challenging technical problem you solved.",
-        "How do you approach learning new technologies?",
-        "What's your experience with version control?",
-        "How do you handle working in a team?",
-        "What are your strengths as a developer?",
-        "How do you handle feedback on your code?",
-        "What's your experience with agile methodologies?",
-        "Where do you see yourself in 5 years?"
-    ];
-}
-
-export async function GET() {
     return NextResponse.json({
-        status: "active",
-        message: "Questions generation API is working",
-        supports: ["POST with role, skills, experience"],
-        timestamp: new Date().toISOString()
+      success: false,
+      error: "Failed to generate questions",
+      fallback: {
+        questions: [
+          {
+            question: "Tell me about your experience with relevant technologies.",
+            difficulty: "MEDIUM",
+            category: "Technical",
+            expectedKeywords: ["experience", "project", "challenge"],
+            timeLimit: 5,
+          },
+        ],
+      },
     });
+  }
+}
+
+function getDifficultyBreakdown(questions: Question[]): Record<"EASY" | "MEDIUM" | "HARD", number> {
+  const breakdown = { EASY: 0, MEDIUM: 0, HARD: 0 };
+  questions.forEach((q) => {
+    breakdown[q.difficulty] += 1;
+  });
+  return breakdown;
+}
+
+function getFallbackQuestions(role: string = "Software Developer", skills: string[] = []): Question[] {
+  const baseQuestions: Question[] = [
+    {
+      question: `What interests you most about the ${role} position?`,
+      difficulty: "EASY",
+      category: "Behavioral",
+      expectedKeywords: ["passion", "interest", "career"],
+      timeLimit: 3,
+    },
+    {
+      question: `Describe a challenging project you worked on using ${skills?.[0] || "your main technology"}.`,
+      difficulty: "MEDIUM",
+      category: "Technical",
+      expectedKeywords: ["challenge", "solution", "learning"],
+      timeLimit: 7,
+    },
+  ];
+
+  const lowerRole = role.toLowerCase();
+  if (lowerRole.includes("frontend") || lowerRole.includes("react")) {
+    baseQuestions.push({
+      question: "How do you manage state in a large React application?",
+      difficulty: "HARD",
+      category: "Technical",
+      expectedKeywords: ["redux", "context", "state management", "performance"],
+      timeLimit: 10,
+      followUp: ["How would you choose between Redux and Context API?"],
+    });
+  } else if (lowerRole.includes("backend")) {
+    baseQuestions.push({
+      question: "How would you design a scalable RESTful API?",
+      difficulty: "HARD",
+      category: "System Design",
+      expectedKeywords: ["scalability", "caching", "database", "load balancing"],
+      timeLimit: 15,
+      followUp: ["How would you handle rate limiting?"],
+    });
+  }
+
+  return baseQuestions;
 }
