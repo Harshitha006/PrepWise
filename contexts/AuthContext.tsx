@@ -8,6 +8,7 @@ import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     sendEmailVerification,
+    sendPasswordResetEmail,
     updateProfile,
     User
 } from "firebase/auth";
@@ -20,8 +21,11 @@ interface AuthContextType {
     user: User | null;
     loading: boolean;
     signInWithGoogle: () => Promise<void>;
+    signUp: (email: string, password: string, name: string) => Promise<void>;
+    signIn: (email: string, password: string) => Promise<void>;
     signUpWithEmail: (email: string, password: string, name: string) => Promise<void>;
     signInWithEmail: (email: string, password: string) => Promise<void>;
+    resetPassword: (email: string) => Promise<void>;
     logout: () => Promise<void>;
 }
 
@@ -29,8 +33,11 @@ const AuthContext = createContext<AuthContextType>({
     user: null,
     loading: true,
     signInWithGoogle: async () => { },
+    signUp: async () => { },
+    signIn: async () => { },
     signUpWithEmail: async () => { },
     signInWithEmail: async () => { },
+    resetPassword: async () => { },
     logout: async () => { },
 });
 
@@ -133,6 +140,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const resetPassword = async (email: string) => {
+        try {
+            await sendPasswordResetEmail(auth, email);
+            toast.success("Password reset email sent!");
+        } catch (error: any) {
+            console.error("Reset password error:", error);
+            toast.error(error.message || "Failed to send reset email");
+            throw error;
+        }
+    };
+
     const logout = async () => {
         try {
             await firebaseSignOut(auth);
@@ -151,8 +169,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             user,
             loading,
             signInWithGoogle,
+            signUp: signUpWithEmail,
+            signIn: signInWithEmail,
             signUpWithEmail,
             signInWithEmail,
+            resetPassword,
             logout
         }}>
             {children}
