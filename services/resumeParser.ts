@@ -14,7 +14,7 @@
  *  - We request JSON-mode output so parsing is deterministic.
  */
 
-import pdfParse from "pdf-parse";
+import { PDFParse } from "pdf-parse";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY!);
@@ -86,7 +86,8 @@ export async function parseResumePDF(pdfBuffer: Buffer): Promise<ParsedResume> {
   // Step 1 – Extract raw text
   let rawText = "";
   try {
-    const parsed = await pdfParse(pdfBuffer);
+    const parser = new PDFParse({ data: pdfBuffer });
+    const parsed = await parser.getText();
     rawText = parsed.text.trim();
   } catch (err) {
     throw new Error(`PDF text extraction failed: ${(err as Error).message}`);

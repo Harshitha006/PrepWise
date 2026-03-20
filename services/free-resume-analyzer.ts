@@ -1,5 +1,4 @@
-// @ts-ignore
-import pdfParse from 'pdf-parse';
+import { PDFParse } from 'pdf-parse';
 import Tesseract from 'tesseract.js';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
@@ -42,7 +41,8 @@ export class FreeResumeAnalyzer {
         try {
             // First try: pdf-parse (fastest for text-based PDFs)
             // Note: pdf-parse version in package.json is 2.4.5 which might have different API or issue in some envs
-            const data = await pdfParse(buffer);
+            const parser = new PDFParse({ data: buffer });
+            const data = await parser.getText();
             if (data.text && data.text.length > 50) {
                 return data.text;
             }
