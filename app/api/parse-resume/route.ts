@@ -11,7 +11,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import pdfParse from "pdf-parse";
+import { PDFParse } from "pdf-parse";
 import { ParsedResume } from "@/types/resume";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY!);
@@ -103,11 +103,9 @@ export async function POST(req: NextRequest) {
     let pdfParseError = false;
 
     try {
-      const pdfData = await pdfParse(buffer, {
-        normalizeWhitespace: false,
-        disableCombineTextItems: false,
-      });
-      rawText = pdfData.text;
+      const parser = new PDFParse({ data: buffer });
+      const result = await parser.getText();
+      rawText = result.text;
     } catch (err) {
       console.error("pdf-parse failed:", err);
       pdfParseError = true;
