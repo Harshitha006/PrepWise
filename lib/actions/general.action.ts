@@ -1,11 +1,12 @@
 "use server";
 
-import { adminDb } from "@/firebase/admin";
+import { getAdminDb } from "@/firebase/admin";
 
 export async function getInterviewsByUserId(userId: string) {
     try {
-        if (!adminDb) return [];
-        const snapshot = await adminDb
+        const db = getAdminDb();
+        if (!db) return [];
+        const snapshot = await db
             .collection("interviews")
             .where("userId", "==", userId)
             .orderBy("createdAt", "desc")
@@ -23,11 +24,12 @@ export async function getInterviewsByUserId(userId: string) {
 
 export async function getLatestInterviews({ userId, limit = 20 }: { userId: string; limit?: number }) {
     try {
-        if (!adminDb) return [];
+        const db = getAdminDb();
+        if (!db) return [];
         // Note: This query requires an index: finalized (asc) + userId (not equal) + createdAt (desc)
         // For simplicity, we'll fetch all finalized and filter in memory if the index isn't ready
         // But ideally we use the query.
-        const snapshot = await adminDb
+        const snapshot = await db
             .collection("interviews")
             .where("finalized", "==", true)
             .limit(limit)
@@ -47,8 +49,9 @@ export async function getLatestInterviews({ userId, limit = 20 }: { userId: stri
 
 export async function getInterviewById(id: string) {
     try {
-        if (!adminDb) return null;
-        const doc = await adminDb.collection("interviews").doc(id).get();
+        const db = getAdminDb();
+        if (!db) return null;
+        const doc = await db.collection("interviews").doc(id).get();
         if (!doc.exists) return null;
         return { id: doc.id, ...doc.data() } as any;
     } catch (error) {
@@ -58,13 +61,13 @@ export async function getInterviewById(id: string) {
 
 export async function getFeedbackByInterviewId(interviewId: string) {
     try {
-        if (!adminDb) return null;
-        const snapshot = await adminDb
+        const db = getAdminDb();
+        if (!db) return null;
+        const snapshot = await db
             .collection("feedback")
             .where("interviewId", "==", interviewId)
             .limit(1)
             .get();
-
         if (snapshot.empty) return null;
         return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as any;
     } catch (error) {

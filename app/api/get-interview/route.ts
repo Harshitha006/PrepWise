@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/firebase/admin";
+import { getAdminDb } from "@/firebase/admin";
 
 export async function GET(req: NextRequest) {
     try {
@@ -14,14 +14,15 @@ export async function GET(req: NextRequest) {
             );
         }
 
-        if (!adminDb) {
+        const db = getAdminDb();
+        if (!db) {
             return NextResponse.json(
                 { success: false, error: "Database not initialized" },
                 { status: 500 }
             );
         }
 
-        const interviewDoc = await adminDb.collection("interviews").doc(sessionId).get();
+        const interviewDoc = await db.collection("interviews").doc(sessionId).get();
 
         if (!interviewDoc.exists) {
             return NextResponse.json(

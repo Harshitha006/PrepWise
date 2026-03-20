@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/firebase/admin";
+import { getAdminDb } from "@/firebase/admin";
 
 export async function GET(req: NextRequest) {
     try {
@@ -13,7 +13,8 @@ export async function GET(req: NextRequest) {
             );
         }
 
-        if (!adminDb) {
+        const db = getAdminDb();
+        if (!db) {
             console.log("Database not initialized, returning mock data");
             return NextResponse.json({
                 success: true,
@@ -32,13 +33,13 @@ export async function GET(req: NextRequest) {
         }
 
         // Get user data without complex queries to avoid index requirements
-        const userDoc = await adminDb.collection("users").doc(userId).get();
+        const userDoc = await db.collection("users").doc(userId).get();
         const userData = userDoc.exists ? userDoc.data() : null;
 
         // Get all resumes and filter manually to avoid index requirement
         let latestResume = null;
         try {
-            const resumesSnapshot = await adminDb.collection("resumes").get();
+            const resumesSnapshot = await db.collection("resumes").get();
             const userResumes = resumesSnapshot.docs
                 .filter(doc => doc.data().userId === userId)
                 .sort((a, b) => {
@@ -58,7 +59,7 @@ export async function GET(req: NextRequest) {
         // Get all interviews and filter manually
         let interviewCount = 0;
         try {
-            const interviewsSnapshot = await adminDb.collection("interviews").get();
+            const interviewsSnapshot = await db.collection("interviews").get();
             interviewCount = interviewsSnapshot.docs.filter(doc =>
                 doc.data().userId === userId
             ).length;

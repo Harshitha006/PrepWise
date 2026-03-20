@@ -1,11 +1,12 @@
 "use server";
 
-import { adminAuth, adminDb } from "@/firebase/admin";
+import { getAdminAuth, getAdminDb } from "@/firebase/admin";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 export async function setSessionCookie(idToken: string) {
     const expiresIn = 60 * 60 * 24 * 7 * 1000; // 7 days
+    const adminAuth = getAdminAuth();
     if (!adminAuth) {
         throw new Error("Firebase Admin Auth not initialized. Check server environment variables.");
     }
@@ -31,6 +32,9 @@ export async function getCurrentUser() {
     if (!session) return null;
 
     try {
+        const adminAuth = getAdminAuth();
+        const adminDb = getAdminDb();
+
         if (!adminAuth || !adminDb) {
             console.error("Firebase Admin not initialized in getCurrentUser");
             return null;
@@ -74,6 +78,7 @@ export async function deleteSessionCookie() {
 
 export async function signUp(userData: { name: string; email: string; uid: string }) {
     try {
+        const adminDb = getAdminDb();
         if (!adminDb) throw new Error("Firebase Admin Firestore not initialized.");
         await adminDb.collection("users").doc(userData.uid).set({
             name: userData.name,

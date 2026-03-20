@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/firebase/admin";
+import { getAdminDb } from "@/firebase/admin";
 
 export async function POST(req: Request) {
     try {
@@ -13,7 +13,8 @@ export async function POST(req: Request) {
             );
         }
 
-        if (!adminDb) {
+        const db = getAdminDb();
+        if (!db) {
             // Logic for when Firebase Admin is not available
             return NextResponse.json({
                 success: true,
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
         }
 
         // Save formal results to interviewResults collection
-        await adminDb.collection("interviewResults").doc(sessionId).set({
+        await db.collection("interviewResults").doc(sessionId).set({
             userId,
             sessionId,
             answers,
@@ -34,13 +35,13 @@ export async function POST(req: Request) {
         });
 
         // Update the original session document
-        await adminDb.collection("interviewSessions").doc(sessionId).update({
+        await db.collection("interviewSessions").doc(sessionId).update({
             status: "completed",
             completedAt
         });
 
         // Update user statistics
-        const userRef = adminDb.collection("users").doc(userId);
+        const userRef = db.collection("users").doc(userId);
         const userDoc = await userRef.get();
 
         if (userDoc.exists) {

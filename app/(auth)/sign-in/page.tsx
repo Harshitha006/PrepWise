@@ -24,9 +24,13 @@ export default function SignInPage() {
 
         try {
             await signInWithEmail(email, password);
-            router.push("/dashboard");
+            router.push("/dashboard");  // Fixed: landing user into their account dashboard
         } catch (err: any) {
-            // Handled in Context
+            // AuthContext already calls toast.error(); this is a safety-net
+            // in case the error propagates without a toast (e.g. network issue).
+            if (!err?.alreadyHandled) {
+                toast.error(err?.message || "Sign-in failed. Please try again.");
+            }
         } finally {
             setLoading(false);
         }
@@ -36,9 +40,13 @@ export default function SignInPage() {
         try {
             setLoading(true);
             await signInWithGoogle();
-            router.push("/dashboard");
+            router.push("/dashboard");  // Fixed: landing user into their account dashboard
         } catch (err: any) {
-            // Handled in Context
+            // AuthContext already calls toast.error(); this is a safety-net
+            // in case the error propagates without a toast (e.g. network issue).
+            if (!err?.alreadyHandled) {
+                toast.error(err?.message || "Google sign-in failed. Please try again.");
+            }
         } finally {
             setLoading(false);
         }

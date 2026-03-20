@@ -3,7 +3,7 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateObject } from "ai";
 import { z } from "zod";
-import { adminDb } from "@/firebase/admin";
+import { getAdminDb } from "@/firebase/admin";
 
 const google = createGoogleGenerativeAI({
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
@@ -39,12 +39,13 @@ export async function createFeedback(interviewId: string, userId: string, transc
             createdAt: new Date().toISOString(),
         };
 
-        if (!adminDb) throw new Error("Database not initialized");
+        const db = getAdminDb();
+        if (!db) throw new Error("Database not initialized");
 
-        await adminDb.collection("feedback").add(feedbackData);
+        await db.collection("feedback").add(feedbackData);
 
         // Update interview with score for dashboard display
-        const interviewRef = adminDb.collection("interviews").doc(interviewId);
+        const interviewRef = db.collection("interviews").doc(interviewId);
         await interviewRef.update({
             score: object.totalScore,
         });

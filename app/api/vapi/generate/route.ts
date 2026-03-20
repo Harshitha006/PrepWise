@@ -1,7 +1,7 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateObject } from "ai";
 import { z } from "zod";
-import { adminDb } from "@/firebase/admin";
+import { getAdminDb } from "@/firebase/admin";
 import { getRandomInterviewCover } from "@/lib/utils";
 import { NextResponse } from "next/server";
 
@@ -53,13 +53,14 @@ export async function POST(req: Request) {
             createdAt: new Date().toISOString(),
         };
 
-        if (!adminDb) {
-            console.error("FIREBASE ERROR: adminDb is null. Check environment variables.");
+        const db = getAdminDb();
+        if (!db) {
+            console.error("FIREBASE ERROR: Database (Firestore) not initialized. Check server environment variables.");
             throw new Error("Database not initialized");
         }
 
         console.log("Saving to Firestore...");
-        const docRef = await adminDb.collection("interviews").add(interviewData);
+        const docRef = await db.collection("interviews").add(interviewData);
         console.log("Saved Success! ID:", docRef.id);
 
         return NextResponse.json({ id: docRef.id, success: true });

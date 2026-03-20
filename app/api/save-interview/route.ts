@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/firebase/admin";
+import { getAdminDb } from "@/firebase/admin";
 
 export async function POST(req: NextRequest) {
     try {
@@ -13,7 +13,8 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        if (!adminDb) {
+        const db = getAdminDb();
+        if (!db) {
             return NextResponse.json(
                 { success: false, error: "Database not initialized" },
                 { status: 500 }
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Update the interview document
-        await adminDb.collection("interviews").doc(sessionId).set(sessionData, { merge: true });
+        await db.collection("interviews").doc(sessionId).set(sessionData, { merge: true });
 
         return NextResponse.json({
             success: true,

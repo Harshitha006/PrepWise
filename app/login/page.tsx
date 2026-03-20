@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { Mail, Lock, User, Key, Chrome } from "lucide-react";
+import { toast } from "sonner";
 
 export default function LoginPage() {
     const [activeTab, setActiveTab] = useState("login");
@@ -30,10 +31,12 @@ export default function LoginPage() {
         setLoading(true);
         try {
             await signIn(email, password);
-            router.push("/");
+            router.push("/dashboard");
             router.refresh();
-        } catch (error) {
-            // Already handled
+        } catch (error: any) {
+            if (!error?.alreadyHandled) {
+                toast.error(error?.message || "Login failed");
+            }
         } finally {
             setLoading(false);
         }
@@ -60,9 +63,11 @@ export default function LoginPage() {
         setLoading(true);
         try {
             await signInWithGoogle();
-            router.push("/");
-        } catch (error) {
-            // Error is already handled in AuthContext
+            router.push("/dashboard");
+        } catch (error: any) {
+            if (!error?.alreadyHandled) {
+                toast.error(error?.message || "Google sign-in failed");
+            }
         } finally {
             setLoading(false);
         }

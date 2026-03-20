@@ -57,15 +57,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (user) {
                 // Check if user document exists, create if not (primarily for Google sign-in)
                 try {
-                    const userDoc = await getDoc(doc(db, "users", user.uid));
-                    if (!userDoc.exists()) {
-                        await setDoc(doc(db, "users", user.uid), {
-                            email: user.email,
-                            name: user.displayName || user.email?.split('@')[0],
-                            createdAt: new Date().toISOString(),
-                            resumeData: null,
-                            interviewHistory: []
-                        });
+                    if (db) {
+                        const userDoc = await getDoc(doc(db, "users", user.uid));
+                        if (!userDoc.exists()) {
+                            await setDoc(doc(db, "users", user.uid), {
+                                email: user.email,
+                                name: user.displayName || user.email?.split('@')[0],
+                                createdAt: new Date().toISOString(),
+                                resumeData: null,
+                                interviewHistory: []
+                            });
+                        }
                     }
                 } catch (error) {
                     console.error("Error ensuring user document:", error);
@@ -82,19 +84,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const signInWithGoogle = async () => {
         try {
+            if (!auth || !googleProvider) {
+                throw Object.assign(
+                    new Error("Firebase is not initialised — check your NEXT_PUBLIC_ environment variables."),
+                    { alreadyHandled: false }
+                );
+            }
             const result = await signInWithPopup(auth, googleProvider);
             const idToken = await result.user.getIdToken();
             await setSessionCookie(idToken);
             toast.success("Signed in with Google!");
-        } catch (error) {
+        } catch (error: any) {
             console.error("Google sign-in error:", error);
-            toast.error("Google sign-in failed");
-            throw error;
+            if (!error?.alreadyHandled) {
+                toast.error(error?.message || "Google sign-in failed");
+            }
+            // Mark so the page-level catch block doesn't show a second toast
+            throw Object.assign(error, { alreadyHandled: true });
         }
     };
 
     const signUpWithEmail = async (email: string, password: string, name: string) => {
         try {
+            if (!auth || !db) {
+                throw new Error("Firebase is not initialised — check your NEXT_PUBLIC_ environment variables.");
+            }
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
 
             // Update profile with name
@@ -112,10 +126,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 interviewHistory: []
             });
 
-            // We sign out after registration to require manual login (as per existing logic preference)
-            // or we can just stay logged in. The user's suggestion said:
-            // "Don't set user here - let onAuthStateChanged handle it. This allows showing verification message"
-            // But typically we'd sign out if we want them to verify first.
             await firebaseSignOut(auth);
             await deleteSessionCookie();
 
@@ -123,12 +133,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (error: any) {
             console.error("Email sign-up error:", error);
             toast.error(error.message || "Registration failed");
-            throw error;
+            throw Object.assign(error, { alreadyHandled: true });
         }
     };
 
     const signInWithEmail = async (email: string, password: string) => {
         try {
+            if (!auth) {
+                throw new Error("Firebase is not initialised — check your NEXT_PUBLIC_ environment variables.");
+            }
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const idToken = await userCredential.user.getIdToken();
             await setSessionCookie(idToken);
@@ -136,12 +149,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (error: any) {
             console.error("Email sign-in error:", error);
             toast.error(error.message || "Invalid credentials");
-            throw error;
+            throw Object.assign(error, { alreadyHandled: true });
         }
     };
 
     const resetPassword = async (email: string) => {
         try {
+            if (!auth) throw new Error("Firebase is not initialised — check your NEXT_PUBLIC_ environment variables.");
             await sendPasswordResetEmail(auth, email);
             toast.success("Password reset email sent!");
         } catch (error: any) {
@@ -153,7 +167,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const logout = async () => {
         try {
-            await firebaseSignOut(auth);
+            if (auth) {
+                await firebaseSignOut(auth);
+            }
             await deleteSessionCookie();
             setUser(null);
             toast.success("Logged out successfully");

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateObject, generateText } from "ai";
 import { z } from "zod";
-import { adminDb } from "@/firebase/admin";
+import { getAdminDb } from "@/firebase/admin";
 
 // Resume analysis schema
 const resumeAnalysisSchema = z.object({
@@ -18,7 +18,7 @@ const resumeAnalysisSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-    console.log("=== RESUME UPLOAD API CALLED ===");
+    console.log(`=== RESUME UPLOAD API CALLED AT ${new Date().toISOString()} ===`);
 
     try {
         // Check content type
@@ -613,14 +613,15 @@ function generateImprovements(atsAnalysis: any, skills: string[], text: string):
 
 // Save to database
 async function saveToDatabase(userId: string, analysis: any, jobRecommendations: string, resumeText: string) {
-    if (!adminDb) {
+    const db = getAdminDb();
+    if (!db) {
         console.log("Database not available, skipping save");
         return;
     }
 
     try {
         // Save resume analysis
-        const resumeRef = await adminDb.collection("resumes").add({
+        const resumeRef = await db.collection("resumes").add({
             userId,
             uploadDate: new Date().toISOString(),
             analysis,
@@ -632,7 +633,7 @@ async function saveToDatabase(userId: string, analysis: any, jobRecommendations:
         });
 
         // Update user profile
-        await adminDb.collection("users").doc(userId).set({
+        await db.collection("users").doc(userId).set({
             hasResume: true,
             lastResumeUpdate: new Date().toISOString(),
             skills: analysis.skills,

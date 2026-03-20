@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateObject } from "ai";
 import { z } from "zod";
-import { adminDb } from "@/firebase/admin";
+import { getAdminDb } from "@/firebase/admin";
 
 const google = createGoogleGenerativeAI({
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || "",
@@ -55,8 +55,9 @@ export async function POST(req: NextRequest) {
         }
 
         // Save feedback to the interview session
-        if (adminDb && sessionId) {
-            await adminDb.collection("interviews").doc(sessionId).update({
+        const db = getAdminDb();
+        if (db && sessionId) {
+            await db.collection("interviews").doc(sessionId).update({
                 feedback,
                 status: "completed",
                 completedAt: new Date().toISOString()
