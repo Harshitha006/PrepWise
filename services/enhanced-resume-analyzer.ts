@@ -1,4 +1,8 @@
 import { PDFParse } from "pdf-parse";
+
+// FIX: Set worker source
+PDFParse.setWorker('https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.296/legacy/build/pdf.worker.min.mjs');
+
 import Tesseract from "tesseract.js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import fs from "fs";
@@ -306,7 +310,7 @@ export class EnhancedResumeAnalyzer {
 
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
       const prompt = `You are an expert resume analyzer. Analyze this resume and return strict JSON only.\n
 Resume Text: ${text.substring(0, 4000)}\n
 Extracted Data: ${JSON.stringify(parsedData)}\n

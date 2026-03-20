@@ -15,6 +15,10 @@
  */
 
 import { PDFParse } from "pdf-parse";
+
+// FIX: Set worker to avoid "Cannot find module pdf.worker.mjs"
+PDFParse.setWorker('https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.296/legacy/build/pdf.worker.min.mjs');
+
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY!);
@@ -101,7 +105,7 @@ export async function parseResumePDF(pdfBuffer: Buffer): Promise<ParsedResume> {
 
   // Step 2 – Ask Gemini to structure the text
   const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
+    model: "gemini-1.5-flash-latest",
     generationConfig: {
       responseMimeType: "application/json",
       temperature: 0.1, // low temp = deterministic structured output

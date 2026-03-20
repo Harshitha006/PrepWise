@@ -12,11 +12,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { PDFParse } from "pdf-parse";
+
+// FIX: Set worker source to avoid "Cannot find module pdf.worker.mjs" in Next.js/Turbopack
+PDFParse.setWorker('https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.296/legacy/build/pdf.worker.min.mjs');
+
 import { ParsedResume } from "@/types/resume";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY!);
 const model = genAI.getGenerativeModel({
-  model: "gemini-1.5-flash",
+  model: "gemini-1.5-flash-latest",
   generationConfig: { temperature: 0.1 },
 });
 

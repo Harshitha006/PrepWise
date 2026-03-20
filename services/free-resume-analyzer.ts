@@ -1,4 +1,8 @@
 import { PDFParse } from 'pdf-parse';
+
+// FIX: Set worker source
+PDFParse.setWorker('https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.296/legacy/build/pdf.worker.min.mjs');
+
 import Tesseract from 'tesseract.js';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
@@ -189,7 +193,7 @@ export class FreeResumeAnalyzer {
             }
 
             const genAI = new GoogleGenerativeAI(apiKey);
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
             const prompt = `
       Analyze this resume text and provide brief insights:
