@@ -1,7 +1,12 @@
 // ============================================================
-// app/api/parse-resume/route.ts
-// FIXED: Robust PDF parser using pdf-parse + Gemini structured extraction
-// Replaces the broken basic pdf-parse implementation
+// app/api/parse-resume/route.ts  — FIXED
+//
+// BUGS FIXED:
+// 1. cleanPdfText() was stripping ALL non-ASCII including é,ñ,ü
+//    → names/companies with accented chars became garbled
+// 2. /^\s*\d+\s*$/gm was removing standalone years like "2023"
+//    which appear alone on a line in columnar resume layouts
+//    → experience dates were silently dropped
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
@@ -10,55 +15,51 @@ import pdfParse from "pdf-parse";
 import { ParsedResume } from "@/types/resume";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY!);
-
-// ── Gemini model for structured extraction ──────────────────
 const model = genAI.getGenerativeModel({
   model: "gemini-1.5-flash",
-  generationConfig: {
-    temperature: 0.1,        // Low temperature = deterministic/accurate
-    responseMimeType: "application/json",
-  },
+  generationConfig: { temperature: 0.1 },
 });
 
-// ── Clean raw PDF text before sending to Gemini ─────────────
 function cleanPdfText(raw: string): string {
   return raw
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
-    // Remove repeated whitespace/blank lines
     .replace(/\n{3,}/g, "\n\n")
-    // Remove page numbers like "Page 1 of 2" or just lone numbers
-    .replace(/^Page\s+\d+\s+of\s+\d+$/gim, "")
-    .replace(/^\s*\d+\s*$/gm, "")
-    // Remove common PDF artifacts
-    .replace(/[^\x00-\x7F]/g, (c) => {
-      // Keep useful unicode like bullets •, em-dashes —, etc.
-      const keep = ["•", "●", "◦", "▪", "–", "—", "→", "·"];
-      return keep.includes(c) ? c : " ";
-    })
-    .replace(/[ \t]{2,}/g, " ")
+    // FIX 1: Only strip FULL "Page X of Y" lines — NOT standalone years
+    .replace(/^Page\s+\d+\s+of\s+\d+\s*$/gim, "")
+    // FIX 2: Only remove standalone numbers that are clearly just page numbers
+    // (single digit, or 2-digit, but NOT 4-digit years like 2023)
+    .replace(/^\s*\d{1,2}\s*$/gm, "")
+    // FIX 3: Keep accented/unicode characters — only remove truly garbage chars
+    // (control chars, null bytes, etc.) but keep printable extended Latin
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+    // Normalize excessive spaces but keep structure
+    .replace(/[ \t]{3,}/g, "  ")
     .trim();
 }
 
-// ── The extraction prompt ────────────────────────────────────
 function buildExtractionPrompt(text: string): string {
-  return `
-You are an expert resume parser. Extract ALL information from the resume text below and return ONLY valid JSON matching the schema exactly. 
+  return `You are an expert resume parser. Extract ALL information from the resume text below.
+Return ONLY valid JSON — no explanation, no markdown fences.
 
 Rules:
-- If a field is not found, use empty string "" or empty array []
-- For skills: separate into technical (programming languages, frameworks, databases), soft (communication, leadership etc.), tools (IDEs, CI/CD, cloud platforms), and languages (spoken languages)
-- For experience: extract each job separately with bullet points as description array
-- Do NOT invent information — only extract what's present
-- For projects: extract tech stack as separate array if mentioned
-- Dates should be in format "Month Year – Month Year" or "Month Year – Present"
+- If a field is missing, use "" or []
+- skills.technical: programming languages, frameworks, databases, ML/AI tools
+- skills.tools: IDEs, DevOps, cloud, version control, design tools
+- skills.soft: leadership, communication, teamwork etc.
+- skills.languages: spoken/written languages (English, Hindi, etc.)
+- experience: each job as separate object; description = array of bullet points
+- projects: include tech stack as array; extract from "Projects" or "Academic Projects" section
+- certifications: course completions, professional certs
+- achievements: awards, hackathon wins, publications, rankings
+- summary: professional summary or objective statement if present
 
 Resume Text:
 ---
 ${text}
 ---
 
-Return this exact JSON schema:
+Return exactly this schema:
 {
   "name": "",
   "email": "",
@@ -72,32 +73,17 @@ Return this exact JSON schema:
     "languages": []
   },
   "experience": [
-    {
-      "title": "",
-      "company": "",
-      "duration": "",
-      "description": []
-    }
+    { "title": "", "company": "", "duration": "", "description": [] }
   ],
   "education": [
-    {
-      "degree": "",
-      "institution": "",
-      "year": "",
-      "gpa": ""
-    }
+    { "degree": "", "institution": "", "year": "", "gpa": "" }
   ],
   "projects": [
-    {
-      "name": "",
-      "description": "",
-      "techStack": []
-    }
+    { "name": "", "description": "", "techStack": [] }
   ],
   "certifications": [],
   "achievements": []
-}
-`;
+}`;
 }
 
 export async function POST(req: NextRequest) {
@@ -105,81 +91,64 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const file = formData.get("resume") as File | null;
 
-    if (!file) {
-      return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
-    }
+    if (!file) return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
+    if (file.type !== "application/pdf")
+      return NextResponse.json({ error: "Only PDF files supported" }, { status: 400 });
+    if (file.size > 5 * 1024 * 1024)
+      return NextResponse.json({ error: "File too large. Maximum 5MB." }, { status: 400 });
 
-    if (file.type !== "application/pdf") {
-      return NextResponse.json(
-        { error: "Only PDF files are supported" },
-        { status: 400 }
-      );
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json(
-        { error: "File too large. Maximum size is 5MB." },
-        { status: 400 }
-      );
-    }
-
-    // ── Step 1: Extract raw text from PDF ────────────────────
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const buffer = Buffer.from(await file.arrayBuffer());
 
     let rawText = "";
     let pdfParseError = false;
 
     try {
       const pdfData = await pdfParse(buffer, {
-        // Preserve layout for better extraction
         normalizeWhitespace: false,
         disableCombineTextItems: false,
       });
       rawText = pdfData.text;
     } catch (err) {
-      console.error("pdf-parse failed, falling back to buffer text:", err);
+      console.error("pdf-parse failed:", err);
       pdfParseError = true;
-      // Fallback: try to extract text directly from buffer as string
-      rawText = buffer.toString("utf-8").replace(/[^\x20-\x7E\n\t]/g, " ");
+      rawText = buffer.toString("latin1").replace(/[\x00-\x08\x0E-\x1F\x7F]/g, " ");
     }
 
     if (!rawText || rawText.trim().length < 50) {
       return NextResponse.json(
         {
-          error:
-            "Could not extract text from PDF. The file may be scanned/image-based or corrupted. Please upload a text-based PDF.",
-          hint: "Try exporting your resume from Word or Google Docs as PDF.",
+          error: "Could not extract text from this PDF. It may be image-based or corrupted.",
+          hint: "Export your resume as PDF from Word or Google Docs and try again.",
         },
         { status: 422 }
       );
     }
 
-    // ── Step 2: Clean the extracted text ─────────────────────
     const cleanedText = cleanPdfText(rawText);
-
-    // ── Step 3: Gemini structured extraction ─────────────────
     const prompt = buildExtractionPrompt(cleanedText);
     const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
 
-    // ── Step 4: Parse and validate the JSON response ─────────
+    let responseText = result.response.text()
+      .replace(/```json\n?/g, "")
+      .replace(/```\n?/g, "")
+      .trim();
+
     let parsed: ParsedResume;
     try {
       parsed = JSON.parse(responseText);
     } catch {
-      // Gemini sometimes wraps JSON in markdown fences — strip them
-      const cleaned = responseText
-        .replace(/```json\n?/g, "")
-        .replace(/```\n?/g, "")
-        .trim();
-      parsed = JSON.parse(cleaned);
+      // Last resort: find JSON boundaries manually
+      const start = responseText.indexOf("{");
+      const end = responseText.lastIndexOf("}");
+      if (start !== -1 && end !== -1) {
+        parsed = JSON.parse(responseText.slice(start, end + 1));
+      } else {
+        throw new Error("Gemini returned unparseable response");
+      }
     }
 
-    // ── Step 5: Attach rawText for downstream use ─────────────
     parsed.rawText = cleanedText;
 
-    // ── Step 6: Sanity check ──────────────────────────────────
     const hasContent =
       parsed.name ||
       parsed.skills.technical.length > 0 ||
@@ -189,8 +158,7 @@ export async function POST(req: NextRequest) {
     if (!hasContent) {
       return NextResponse.json(
         {
-          error:
-            "Resume parsed but appears empty. Please check the PDF content.",
+          error: "Resume parsed but appears empty. Check the PDF has selectable text.",
           rawTextSample: cleanedText.slice(0, 500),
         },
         { status: 422 }
@@ -203,18 +171,14 @@ export async function POST(req: NextRequest) {
       meta: {
         pdfParseError,
         charCount: cleanedText.length,
-        skillsFound:
-          parsed.skills.technical.length +
-          parsed.skills.tools.length,
+        skillsFound: parsed.skills.technical.length + parsed.skills.tools.length,
         experienceCount: parsed.experience.length,
       },
     });
   } catch (error: unknown) {
     console.error("parse-resume error:", error);
-    const message =
-      error instanceof Error ? error.message : "Unknown error occurred";
     return NextResponse.json(
-      { error: "Failed to parse resume", details: message },
+      { error: "Failed to parse resume", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

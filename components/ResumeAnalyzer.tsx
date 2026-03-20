@@ -208,35 +208,51 @@ export default function ResumeAnalyzer() {
   async function runATSScore() {
     if (!parsed) return;
     setLoading(true);
-    setLoadingMsg("Running ATS scoring engine…");
     setError(null);
+
+    // FIX: Separate try/catch blocks so ATS success is preserved
+    // even if skill-gap fails. Previously one catch wiped both.
+    let atsOk = false;
     try {
+      setLoadingMsg("Running ATS scoring engine…");
       const res = await fetch("/api/ats-score", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ resume: parsed, jobDescription, targetRole }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error || "ATS scoring failed");
       setAtsScore(data.atsScore);
       markDone(3);
-
-      // Auto-run skill gap next
-      setLoadingMsg("Detecting skill gaps…");
-      const res2 = await fetch("/api/skill-gap", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resume: parsed, jobDescription, targetRole }),
-      });
-      const data2 = await res2.json();
-      if (!res2.ok) throw new Error(data2.error);
-      setSkillGap(data2.skillGap);
-      markDone(4);
-      setStep(5);
+      atsOk = true;
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Scoring failed");
-    } finally {
+      setError(e instanceof Error ? e.message : "ATS scoring failed");
       setLoading(false);
+      return;
+    }
+
+    // FIX: Show step 4 loading state so user sees transition
+    if (atsOk) {
+      setStep(4);
+      try {
+        setLoadingMsg("Detecting skill gaps…");
+        const res2 = await fetch("/api/skill-gap", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ resume: parsed, jobDescription, targetRole }),
+        });
+        const data2 = await res2.json();
+        if (!res2.ok) throw new Error(data2.error || "Skill gap failed");
+        setSkillGap(data2.skillGap);
+        markDone(4);
+        setStep(5);
+      } catch (e: unknown) {
+        // Partial failure — ATS done, gap failed. Still advance.
+        setError(`Skill gap analysis failed: ${e instanceof Error ? e.message : "Unknown"}. Continuing…`);
+        setStep(5);
+      } finally {
+        setLoading(false);
+      }
     }
   }
 
@@ -540,6 +556,16 @@ export default function ResumeAnalyzer() {
             >
               Run ATS Score & Skill Gap Analysis →
             </button>
+          </div>
+        )}
+
+        {/* ── STEP 4: Skill Gap Loading ──────────────────────── */}
+        {/* FIX: Step 4 was marked done but had no UI — user saw nothing */}
+        {step === 4 && (
+          <div className="text-center py-20">
+            <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-6" />
+            <p className="text-slate-300 text-lg">Analysing skill gaps…</p>
+            <p className="text-slate-500 text-sm mt-2">Comparing your skills against job requirements</p>
           </div>
         )}
 
