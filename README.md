@@ -81,6 +81,11 @@ PrepWise is a cutting-edge, 100% free interview preparation platform designed to
 
 ## 📁 Project Structure
 
+## 📚 Extended Documentation
+
+See `docs/PROJECT_DOCUMENTATION.md` for complete architecture, workflow, modules, tech stack, and implementation details.
+
+
 ```
 ├── app/
 │   ├── (auth)/             # Authentication pages (sign-in, sign-up)
